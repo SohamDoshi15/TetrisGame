@@ -1,6 +1,6 @@
 #include <iostream>
-#include <thread>
 #include <vector>
+#include <string>
 using namespace std;
 #include <windows.h>
 #include <thread>
@@ -65,7 +65,7 @@ class Tetromino{
         return pieceId;
     }
     int getPositionX(){
-        return pieceId;
+        return positionX;
     }
     int getPositionY(){
         return positionY;
