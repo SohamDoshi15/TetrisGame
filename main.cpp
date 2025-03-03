@@ -90,3 +90,47 @@ int nScreenWidth = 80;
 int nScreenHeight = 30;
 Tetromino structuredTetrominos[7];
 unsigned char pField[nFieldHeight][nFieldWidth];
+
+int main(){
+    wchar_t *screen=new wchar_t[nScreenWidth*nScreenHeight];
+    for(int i=0 ; i < nScreenWidth*nScreenHeight; i++){
+        screen[i]=L' ';
+    }
+    HANDLE hConsole=CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0 , NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+    SetConsoleActiveScreenBuffer(hConsole);
+    DWORD dwBytesWritten=0;
+
+    structuredTetrominos[0] = Tetromino(L"..X...X...X...X.", 0); // I
+    structuredTetrominos[1] = Tetromino(L"..X..XX...X.....", 1); // J
+    structuredTetrominos[2] = Tetromino(L".....XX..XX.....", 2); // O
+    structuredTetrominos[3] = Tetromino(L"..X..XX..X......", 3); // L
+    structuredTetrominos[4] = Tetromino(L".X...XX...X.....", 4); // S
+    structuredTetrominos[5] = Tetromino(L".X...X...XX.....", 5); // T
+    structuredTetrominos[6] = Tetromino(L"..X...X..XX.....", 6); // Z
+
+    for(int x=0; x<nFieldWidth ; x++ ){
+        for(int y=0; y<nFieldHeight ; y++){
+            if(x==0 || x== nFieldWidth-1 || y==nFieldHeight-1){
+                pField[y][x]=9; //sets borders to 9
+            }
+            else{
+                pField[y][x]=0; //sets inner area to 0
+            }
+        }
+    }
+
+    bool bKey[5];
+    int nCurrentPiece=0;
+    int nSpeed=20;
+    int nSpeedCount=0;
+    bool bForceDown=false;
+    bool bRotateHold=true;
+    bool bHardDropHold=true;
+    int nPieceCount=0;
+    int nScore=0;
+    vector <int> vLines;
+    bool bGameOver=false;
+
+
+    
+}
