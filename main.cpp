@@ -162,3 +162,91 @@ private:
             cerr << "Warning: Could not load high score file." << endl;
         }
     }
+
+    void saveHighScore() {
+        if (score > highScore) {
+            highScore = score;
+            ofstream file(HIGH_SCORE_FILE); // Fixed typo here
+            if (file.is_open()) {
+                file << highScore;
+                file.close();
+            } else {
+                cerr << "Warning: Could not save high score to file." << endl;
+            }
+        }
+    }
+
+    void spawnTetromino() {
+        if (board.currentTetromino) {
+            delete board.currentTetromino;
+            board.currentTetromino = nullptr;
+        }
+        if (nextTetromino) {
+            board.currentTetromino = nextTetromino;
+            nextTetromino = nullptr;
+        } else {
+            int type = rand() % SHAPES.size();
+            board.currentTetromino = new Tetromino(type);
+        }
+        firstMove = true;
+
+        if (board.isGameOver()) {
+            gameOver = true;
+            cerr << "Game Over: New tetromino cannot spawn at (" << board.currentTetromino->x << ", " << board.currentTetromino->y << ")" << endl;
+            return;
+        }
+
+        int nextType = rand() % SHAPES.size();
+        nextTetromino = new Tetromino(nextType);
+    }
+
+    void handleInput() {
+        if (_kbhit()) {
+            char key = _getch();
+            if (key == 27) { // ESC to quit
+                gameOver = true;
+                return;
+            }
+            if (key == 'p' || key == 'P') {
+                paused = !paused;
+                if (paused) {
+                    SetConsoleCursorPositionXY(0, BOARD_HEIGHT + 3);
+                    cout << "PAUSED - Press P to resume";
+                } else {
+                    render();
+                }
+                return;
+            }
+            if (paused) return;
+
+            int newX = board.currentTetromino->x;
+            int newY = board.currentTetromino->y;
+
+            switch (key) {
+            case 'a': // Move left
+                newX--;
+                break;
+            case 'd': // Move right
+                newX++;
+                break;
+            case 's': // Move down
+                newY++;
+                break;
+            case 'w': // Rotate
+                {
+                    vector<vector<int>> tempShape = board.currentTetromino->shape;
+                    board.currentTetromino->rotate();
+                    if (board.isCollision(newX, newY, board.currentTetromino->shape)) {
+                        board.currentTetromino->shape = tempShape;
+                    }
+                }
+                break;
+            }
+
+            if (!board.isCollision(newX, newY, board.currentTetromino->shape)) {
+                board.currentTetromino->x = newX;
+                board.currentTetromino->y = newY;
+                firstMove = false;
+            }
+        }
+    }
