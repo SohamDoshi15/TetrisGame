@@ -250,3 +250,179 @@ private:
             }
         }
     }
+    void update() {
+        if (paused) return;
+
+        if (!board.currentTetromino) {
+            spawnTetromino();
+            return;
+        }
+
+        int newY = board.currentTetromino->y + 1;
+        if (!board.isCollision(board.currentTetromino->x, newY, board.currentTetromino->shape)) {
+            board.currentTetromino->y = newY;
+            firstMove = false;
+        } else {
+            board.mergeTetromino();
+            score += 10; // Score for piece landing
+            int linesCleared = board.clearLines();
+            if (linesCleared > 0) {
+                score += linesCleared * 100; // Additional score for cleared lines
+            }
+            delete board.currentTetromino;
+            board.currentTetromino = nullptr;
+            fallDelayMs = std::max(100, BASE_FALL_DELAY_MS - static_cast<int>(score / 500) * 50);
+        }
+
+        if (!firstMove && board.isGameOver()) {
+            gameOver = true;
+        }
+    }
+
+    void render() {
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+        static int lastScore = -1;
+        static int lastHighScore = -1;
+        if (score != lastScore || highScore != lastHighScore) {
+            SetConsoleCursorPositionXY(0, 0);
+            cout << "Score: " << score << "  High Score: " << highScore;
+            lastScore = score;
+            lastHighScore = highScore;
+        }
+
+        vector<vector<int>> displayGrid = board.grid;
+        if (board.currentTetromino) {
+            for (int i = 0; i < board.currentTetromino->shape.size(); i++) {
+                for (int j = 0; j < board.currentTetromino->shape[i].size(); j++) {
+                    if (board.currentTetromino->shape[i][j]) {
+                        int boardX = board.currentTetromino->x + j;
+                        int boardY = board.currentTetromino->y + i;
+                        if (boardY >= 0 && boardX >= 0 && boardX < BOARD_WIDTH && boardY < BOARD_HEIGHT) {
+                            displayGrid[boardY][boardX] = board.currentTetromino->color;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (lastDisplayGrid.size() != BOARD_HEIGHT || 
+            (lastDisplayGrid.size() > 0 && lastDisplayGrid[0].size() != BOARD_WIDTH)) {
+            lastDisplayGrid = vector<vector<int>>(BOARD_HEIGHT, vector<int>(BOARD_WIDTH, -1));
+        }
+        for (int i = 0; i < BOARD_HEIGHT; i++) {
+            for (int j = 0; j < BOARD_WIDTH; j++) {
+                if (displayGrid[i][j] != lastDisplayGrid[i][j]) {
+                    SetConsoleCursorPositionXY(j * BLOCK_SIZE + 1, i + 1);
+                    if (displayGrid[i][j] > 0) {
+                        SetConsoleTextAttribute(hConsole, displayGrid[i][j]);
+                        cout << "[]";
+                    } else {
+                        SetConsoleTextAttribute(hConsole, 7);
+                        cout << "  ";
+                    }
+                    SetConsoleTextAttribute(hConsole, 7); // Reset color after each block
+                }
+            }
+        }
+        lastDisplayGrid = displayGrid;
+
+        static bool bordersDrawn = false;
+        if (!bordersDrawn) {
+            SetConsoleTextAttribute(hConsole, 7);
+            for (int i = 0; i < BOARD_HEIGHT; i++) {
+                SetConsoleCursorPositionXY(0, i + 1);
+                cout << "|";
+                SetConsoleCursorPositionXY(BOARD_WIDTH * BLOCK_SIZE + 1, i + 1);
+                cout << "|";
+            }
+            SetConsoleCursorPositionXY(0, BOARD_HEIGHT + 1);
+            cout << "+";
+            for (int j = 0; j < BOARD_WIDTH * BLOCK_SIZE; j++) cout << "-";
+            cout << "+";
+            bordersDrawn = true;
+        }
+
+        static int lastNextColor = -1;
+        static vector<vector<int>> lastNextShape;
+        if (nextTetromino && (nextTetromino->color != lastNextColor || nextTetromino->shape != lastNextShape)) {
+            SetConsoleCursorPositionXY(BOARD_WIDTH * BLOCK_SIZE + 4, 2);
+            cout << "Next:";
+            for (int i = 0; i < 4; i++) {
+                SetConsoleCursorPositionXY(BOARD_WIDTH * BLOCK_SIZE + 4, 3 + i);
+                cout << "        ";
+            }
+            for (int i = 0; i < nextTetromino->shape.size(); i++) {
+                SetConsoleCursorPositionXY(BOARD_WIDTH * BLOCK_SIZE + 4, 3 + i);
+                for (int j = 0; j < nextTetromino->shape[i].size(); j++) {
+                    if (nextTetromino->shape[i][j]) {
+                        SetConsoleTextAttribute(hConsole, nextTetromino->color);
+                        cout << "[]";
+                    } else {
+                        cout << "  ";
+                    }
+                }
+            }
+            lastNextColor = nextTetromino->color;
+            lastNextShape = nextTetromino->shape;
+        }
+
+        static bool instructionsDrawn = false;
+        if (!instructionsDrawn) {
+            SetConsoleCursorPositionXY(0, BOARD_HEIGHT + 2);
+            cout << "Controls: A (Left), D (Right), S (Down), W (Rotate), P (Pause), ESC (Quit)";
+            instructionsDrawn = true;
+        }
+
+        SetConsoleTextAttribute(hConsole, 7);
+    }
+
+public:
+    Game() : score(0), highScore(0), gameOver(false), paused(false), fallDelayMs(BASE_FALL_DELAY_MS), nextTetromino(nullptr), firstMove(true) {
+        srand(static_cast<unsigned>(time(nullptr)));
+        ShowConsoleCursor(false);
+        loadHighScore();
+        system("cls");
+        spawnTetromino();
+        render();
+    }
+
+    ~Game() {
+        if (nextTetromino) {
+            delete nextTetromino;
+        }
+        saveHighScore();
+        ShowConsoleCursor(true);
+    }
+
+    void run() {
+        DWORD lastUpdate = GetTickCount();
+        while (!gameOver) {
+            handleInput();
+            if (!paused) {
+                DWORD currentTime = GetTickCount();
+                if (currentTime - lastUpdate >= fallDelayMs) {
+                    update();
+                    lastUpdate = currentTime;
+                }
+            }
+            render();
+            Sleep(16);
+        }
+        system("cls");
+        cout << "Game Over! Final Score: " << score << endl;
+        cout << "High Score: " << highScore << endl;
+    }
+};
+
+int main() {
+    try {
+        Game game;
+        game.run();
+    } catch (const exception& e) {
+        cerr << "An error occurred: " << e.what() << endl;
+        return 1;
+    }
+    return 0;
+}
+
